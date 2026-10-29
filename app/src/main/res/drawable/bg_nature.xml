@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp"
+    android:height="800dp"
+    android:viewportWidth="360"
+    android:viewportHeight="800">
+    
+    <!-- Aasman (Sky Light Blue) -->
+    <path
+        android:fillColor="#E1F5FE"
+        android:pathData="M0,0h360v800h-360z"/>
+
+    <!-- Sooraj (Cute Sun) -->
+    <path
+        android:fillColor="#FFF59D"
+        android:pathData="M310,60m-35,0a35,35 0 1,0 70,0a35,35 0 1,0 -70,0"/>
+
+    <!-- Badal (Clouds) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,80 a15,15 0 0,1 25,-5 a20,20 0 0,1 35,5 a15,15 0 0,1 15,15 l-75,0 z"/>
+
+    <!-- Sabz Pahariyan / Ghaas (Green Hills Background) -->
+    <path
+        android:fillColor="#A5D6A7"
+        android:pathData="M0,520 Q90,460 180,520 T360,500 L360,800 L0,800 Z"/>
+
+    <!-- Nehar (Blue Canal / Stream) -->
+    <path
+        android:fillColor="#4FC3F7"
+        android:pathData="M110,800 Q150,650 170,550 Q180,520 190,550 Q210,660 250,800 Z"/>
+
+    <!-- Saamnay wali sabz ghaas (Foreground Grass) -->
+    <path
+        android:fillColor="#81C784"
+        android:pathData="M0,640 Q90,600 180,640 T360,630 L360,800 L0,800 Z"/>
+
+    <!-- Darakht Baanwen Taraf (Left Tree) -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M35,620 L45,620 L45,710 L35,710 Z"/>
+    <path
+        android:fillColor="#388E3C"
+        android:pathData="M40,570m-35,0a35,35 0 1,0 70,0a35,35 0 1,0 -70,0"/>
+
+    <!-- Darakht Daayen Taraf (Right Tree) -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M315,630 L325,630 L325,720 L315,720 Z"/>
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M320,580m-30,0a30,30 0 1,0 60,0a30,30 0 1,0 -60,0"/>
+
+    <!-- Phool (Flowers on grass) -->
+    <path
+        android:fillColor="#E91E63"
+        android:pathData="M80,720m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0"/>
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M80,720m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0"/>
+
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M280,740m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M280,740m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0"/>
+</vector>

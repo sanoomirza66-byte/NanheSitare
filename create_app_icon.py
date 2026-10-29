@@ -1,0 +1,28 @@
+import os
+
+os.makedirs("app/src/main/res/drawable", exist_ok=True)
+
+icon_xml = '''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFB300"
+        android:pathData="M0,0h108v108h-108z"/>
+    <!-- Central Golden Star -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,20 L62,42 L85,42 L66,56 L73,78 L54,64 L35,78 L42,56 L23,42 L46,42 Z"/>
+    <!-- Smiling Eyes -->
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M46,48 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 M62,48 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"/>
+</vector>
+'''
+
+with open("app/src/main/res/drawable/ic_nanhesitare_logo.xml", "w", encoding="utf-8") as f:
+    f.write(icon_xml)
+
+print("SUCCESS: App icon created at res/drawable/ic_nanhesitare_logo.xml!")
