@@ -1,452 +1,184 @@
 package com.nanhesitare.app
 
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioTrack
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlin.concurrent.thread
-import kotlin.math.sin
 
-enum class AppScreen {
-    SPLASH, HOME, URDU, ABC, GINTI, STORIES, STORY_DETAIL
-}
+data class StoryItem(val title: String, val pages: List<String>)
+enum class Screen { SPLASH, HOME, QAIDA, ABC, GINTI, STORIES, STORY_DETAIL }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            NanheSitareKidsApp()
-        }
-    }
-}
-
-// Bachon jesi khubsurat magical bell sound generate karne ka function
-fun playKidsBellSound() {
-    thread {
-        try {
-            val sampleRate = 44100
-            val frequencies = doubleArrayOf(523.25, 659.25, 783.99, 1046.50) // C, E, G, C (Joyful Chime)
-            val durationPerNote = 0.15
-            val totalSamples = (sampleRate * durationPerNote * frequencies.size).toInt()
-            val audioBuffer = ShortArray(totalSamples)
-
-            var bufferIdx = 0
-            for (freq in frequencies) {
-                val noteSamples = (sampleRate * durationPerNote).toInt()
-                for (i in 0 until noteSamples) {
-                    val time = i.toDouble() / sampleRate
-                    val decay = 1.0 - (i.toDouble() / noteSamples)
-                    val sinVal = sin(2.0 * Math.PI * freq * time) * decay
-                    audioBuffer[bufferIdx++] = (sinVal * Short.MAX_VALUE * 0.7).toInt().toShort()
-                }
-            }
-
-            val track = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_GAME)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(sampleRate)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build()
-                )
-                .setBufferSizeInBytes(totalSamples * 2)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build()
-
-            track.write(audioBuffer, 0, totalSamples)
-            track.play()
-        } catch (_: Exception) {}
+        setContent { NanheSitareApp() }
     }
 }
 
 @Composable
-fun NanheSitareKidsApp() {
-    var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
-    var selectedStory by remember { mutableStateOf<StoryItem?>(null) }
-
-    // BACK BUTTON FIX: App band hone ke bajaye peechay jaye
-    BackHandler(enabled = currentScreen != AppScreen.SPLASH) {
-        when (currentScreen) {
-            AppScreen.STORY_DETAIL -> currentScreen = AppScreen.STORIES
-            AppScreen.HOME -> {
-                // Home par back dabane se close ho sakti he
-                android.os.Process.killProcess(android.os.Process.myPid())
-            }
-            else -> currentScreen = AppScreen.HOME
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Har page ke peechay Nature Background (Trees, Nehar, Phool)
-        Image(
-            painter = painterResource(id = R.drawable.bg_nature),
-            contentDescription = "Nature Background",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        when (currentScreen) {
-            AppScreen.SPLASH -> {
-                SplashScreen {
-                    currentScreen = AppScreen.HOME
-                }
-            }
-            AppScreen.HOME -> {
-                HomeScreen(
-                    onUrduClick = { currentScreen = AppScreen.URDU },
-                    onAbcClick = { currentScreen = AppScreen.ABC },
-                    onGintiClick = { currentScreen = AppScreen.GINTI },
-                    onStoriesClick = { currentScreen = AppScreen.STORIES }
-                )
-            }
-            AppScreen.URDU -> {
-                LearningGridScreen("اردو قاعدہ", AppData.urduQaida) { currentScreen = AppScreen.HOME }
-            }
-            AppScreen.ABC -> {
-                LearningGridScreen("English ABC", AppData.englishAbc) { currentScreen = AppScreen.HOME }
-            }
-            AppScreen.GINTI -> {
-                LearningGridScreen("گنتی (Numbers)", AppData.ginti) { currentScreen = AppScreen.HOME }
-            }
-            AppScreen.STORIES -> {
-                StoriesListScreen(AppData.stories, onBack = { currentScreen = AppScreen.HOME }) { story ->
-                    selectedStory = story
-                    currentScreen = AppScreen.STORY_DETAIL
-                }
-            }
-            AppScreen.STORY_DETAIL -> {
-                selectedStory?.let { story ->
-                    StoryDetailScreen(story) { currentScreen = AppScreen.STORIES }
-                }
-            }
-        }
-    }
-}
-
-// SPLASH SCREEN: Nanhe Sitare ek dam Zoom in hoga aur bachon ki awaz ayegi
-@Composable
-fun SplashScreen(onFinish: () -> Unit) {
-    var startAnim by remember { mutableStateOf(false) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (startAnim) 1.2f else 0.1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "zoomAnim"
-    )
-
-    LaunchedEffect(Unit) {
-        startAnim = true
-        playKidsBellSound() // Kids sparkle/bell sound
-        delay(2200)
-        onFinish()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0x33000000)),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .scale(scale)
-                .padding(24.dp),
-            shape = RoundedCornerShape(32.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
-            elevation = CardDefaults.cardElevation(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("⭐", fontSize = 64.sp)
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    "Nanhe Sitare",
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFFF6F00)
-                )
-                Text(
-                    "ننھے ستارے",
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1976D2)
-                )
-            }
-        }
-    }
-}
-
-// HOME SCREEN
-@Composable
-fun HomeScreen(
-    onUrduClick: () -> Unit,
-    onAbcClick: () -> Unit,
-    onGintiClick: () -> Unit,
-    onStoriesClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(30.dp))
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
-        ) {
-            Text(
-                "🌟 ننھے ستارے - Nanhe Sitare 🌟",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFD84315),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(30.dp))
-
-        CategoryCard("اردو قاعدہ (Urdu)", "آ، ا، ب، پ، ت...", Color(0xFFFF7043), "📖", onUrduClick)
-        Spacer(modifier = Modifier.height(16.dp))
-        CategoryCard("English ABC", "A, B, C, D, E...", Color(0xFF42A5F5), "🔤", onAbcClick)
-        Spacer(modifier = Modifier.height(16.dp))
-        CategoryCard("گنتی (Numbers)", "1, 2, 3 / ۱, ۲, ۳...", Color(0xFF66BB6A), "🔢", onGintiClick)
-        Spacer(modifier = Modifier.height(16.dp))
-        CategoryCard("سبق آموز کہانیاں (Stories)", "بچوں کی 2 صفحات کی کہانیاں", Color(0xFFAB47BC), "📚", onStoriesClick)
-    }
-}
-
-@Composable
-fun CategoryCard(title: String, sub: String, color: Color, icon: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(95.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(icon, fontSize = 42.sp)
-            Spacer(modifier = Modifier.width(18.dp))
-            Column {
-                Text(title, fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(sub, fontSize = 14.sp, color = Color.White.copy(alpha = 0.9f))
-            }
-        }
-    }
-}
-
-// LEARNING GRID (Urdu, ABC, Ginti)
-@Composable
-fun LearningGridScreen(title: String, items: List<LearnItem>, onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-        TopBar(title, onBack)
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(items) { item ->
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
-                    elevation = CardDefaults.cardElevation(6.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(item.icon, fontSize = 38.sp)
-                        Text(item.title, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E88E5))
-                        Text(item.subTitle, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF424242))
-                    }
-                }
-            }
-        }
-    }
-}
-
-// STORIES LIST
-@Composable
-fun StoriesListScreen(stories: List<StoryItem>, onBack: () -> Unit, onSelect: (StoryItem) -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        TopBar("بچوں کی کہانیاں", onBack)
-        Spacer(modifier = Modifier.height(12.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            items(stories) { story ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(story) },
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
-                    elevation = CardDefaults.cardElevation(6.dp)
-                ) {
-                    Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("📖", fontSize = 36.sp)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(story.title, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
-                            Text("صفحات: 2 (مکمل کہانی)", fontSize = 13.sp, color = Color.Gray)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// 2-PAGE STORY DETAIL WITH NEXT/PREV
-@Composable
-fun StoryDetailScreen(story: StoryItem, onBack: () -> Unit) {
-    var currentPage by remember { mutableStateOf(0) }
-
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        TopBar(story.title, onBack)
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
-            elevation = CardDefaults.cardElevation(8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
-            ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("صفحہ نمبر: ${currentPage + 1} / 2", fontWeight = FontWeight.Bold, color = Color.Gray)
-                    Text("🌟", fontSize = 20.sp)
-                }
-                Divider(modifier = Modifier.padding(vertical = 10.dp))
-
-                Text(
-                    text = story.pages[currentPage].pageContent,
-                    fontSize = 18.sp,
-                    lineHeight = 30.sp,
-                    textAlign = TextAlign.Right,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (currentPage == 1) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                    ) {
-                        Text(
-                            text = story.moral,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFE65100),
-                            fontSize = 15.sp,
-                            modifier = Modifier.padding(10.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Button(
-                onClick = { if (currentPage > 0) currentPage-- },
-                enabled = currentPage > 0,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
-            ) {
-                Text("⬅️ پچھلا صفحہ")
-            }
-
-            Button(
-                onClick = { if (currentPage < 1) currentPage++ },
-                enabled = currentPage < 1,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-            ) {
-                Text("اگلا صفحہ ➡️")
-            }
-        }
+fun NatureBackground() {
+    Canvas(Modifier.fillMaxSize()) {
+        val w = size.width; val h = size.height
+        drawRect(Color(0xFF81D4FA))
+        drawCircle(Color(0xFFFFEB3B), w * 0.1f, Offset(w * 0.85f, h * 0.12f))
+        drawRect(Color(0xFF81C784), topLeft = Offset(0f, h * 0.45f), size = Size(w, h * 0.55f))
+        drawRect(Color(0xFF4FC3F7), topLeft = Offset(w * 0.4f, h * 0.45f), size = Size(w * 0.2f, h * 0.55f))
+        drawRect(Color(0xFF795548), topLeft = Offset(w * 0.08f, h * 0.42f), size = Size(20f, 60f))
+        drawCircle(Color(0xFF388E3C), 40f, Offset(w * 0.08f + 10f, h * 0.40f))
+        drawRect(Color(0xFF795548), topLeft = Offset(w * 0.85f, h * 0.42f), size = Size(20f, 60f))
+        drawCircle(Color(0xFF388E3C), 40f, Offset(w * 0.85f + 10f, h * 0.40f))
+        drawCircle(Color(0xFFE91E63), 10f, Offset(w * 0.2f, h * 0.7f))
+        drawCircle(Color(0xFFFF9800), 10f, Offset(w * 0.75f, h * 0.75f))
     }
 }
 
 @Composable
 fun TopBar(title: String, onBack: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
+    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))) {
+            Text("⬅ واپس", color = Color.White)
+        }
+        Spacer(Modifier.width(10.dp))
+        Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20), modifier = Modifier.padding(8.dp).fillMaxWidth(), textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+fun GridDisplay(title: String, items: List<Pair<String, String>>, onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        TopBar(title, onBack)
+        LazyVerticalGrid(GridCells.Fixed(3), contentPadding = PaddingValues(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(items) { item ->
+                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f))) {
+                    Column(Modifier.padding(8.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(item.first, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1976D2))
+                        Text(item.second, fontSize = 13.sp, color = Color(0xFF388E3C), fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF263238))
+        }
+    }
+}
+
+@Composable
+fun SplashScreen(onFinish: () -> Unit) {
+    val scale = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        try { ToneGenerator(AudioManager.STREAM_MUSIC, 100).startTone(ToneGenerator.TONE_PROP_BEEP2, 400) } catch (_: Exception) {}
+        scale.animateTo(1.2f, spring(Spring.DampingRatioMediumBouncy))
+        scale.animateTo(1.0f, tween(150))
+        delay(1200); onFinish()
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.scale(scale.value)) {
+            Text("⭐", fontSize = 80.sp)
+            Spacer(Modifier.height(10.dp))
+            Card(shape = RoundedCornerShape(16.dp)) {
+                Text("نन्हे ستارے", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20), modifier = Modifier.padding(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeScreen(onNavigate: (Screen) -> Unit) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+            Text("🌟 نन्हे ستارے 🌟", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32), modifier = Modifier.padding(14.dp).fillMaxWidth(), textAlign = TextAlign.Center)
+        }
+        val menu = listOf(Triple("مکمل اردو قاعدہ", "📗", Screen.QAIDA), Triple("English ABC", "🔤", Screen.ABC), Triple("گنتی (1 تا 20)", "🔢", Screen.GINTI), Triple("کہانیاں", "📚", Screen.STORIES))
+        LazyVerticalGrid(GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(menu) { m ->
+                Card(Modifier.height(120.dp).clickable { onNavigate(m.third) }, shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Text(m.second, fontSize = 36.sp)
+                        Text(m.first, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StoryDetailScreen(story: StoryItem, onBack: () -> Unit) {
+    var p by remember { mutableIntStateOf(0) }
+    Column(Modifier.fillMaxSize()) {
+        TopBar(story.title, onBack)
+        Card(Modifier.fillMaxSize().padding(12.dp), shape = RoundedCornerShape(16.dp)) {
+            Column(Modifier.padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("صفحہ ${p + 1} از ${story.pages.size}", color = Color.Gray, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
+                    Text(story.pages[p], fontSize = 17.sp, lineHeight = 28.sp, textAlign = TextAlign.Right)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Button(onClick = { if (p > 0) p-- }, enabled = p > 0) { Text("پچھلا") }
+                    Button(onClick = { if (p < story.pages.size - 1) p++ }, enabled = p < story.pages.size - 1) { Text("اگلا") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NanheSitareApp() {
+    var screen by remember { mutableStateOf(Screen.SPLASH) }
+    var story by remember { mutableStateOf<StoryItem?>(null) }
+    BackHandler(enabled = screen != Screen.HOME && screen != Screen.SPLASH) {
+        screen = if (screen == Screen.STORY_DETAIL) Screen.STORIES else Screen.HOME
+    }
+
+    val qaida = remember { listOf("آ آم","ا انار","ب بلی","پ پتنگ","ت تتلی","ٹ ٹماٹر","ث ثمر","ج جہاز","چ چڑیا","ح حلوہ","خ خرگوش","د درخت","ڈ ڈولفن","ذ ذخیرہ","ر ریل","ڑ پہاڑ","ز زرافہ","ژ ژالہ","س سیب","ش شیر","ص صوفہ","ض ضعیف","ط طوطا","ظ ظروف","ع عینک","غ غبارہ","ف فوارہ","ق قلم","ک کتاب","گ گائے","ل لومڑی","م مور","ن نلکا","و ورزش","ہ ہاتھی","ء ہمزہ","ی یکہ").map { val s = it.split(" "); Pair(s[0], s[1]) } }
+    val abc = remember { listOf("Apple","Ball","Cat","Dog","Elephant","Fish","Grapes","Horse","Ice Cream","Jug","Kite","Lion","Mango","Nest","Orange","Parrot","Queen","Rabbit","Sun","Tiger","Umbrella","Van","Watch","Xylophone","Yak","Zebra").map { Pair(it.first().toString(), it) } }
+    val ginti = remember { val u = listOf("ایک","دو","تین","چار","پانچ","چھ","سات","آٹھ","نو","دس","گیارہ","بارہ","تیرہ","چودہ","پندرہ","سولہ","سترہ","اٹھارہ","انیس","بیس"); (1..20).map { Pair("$it", u[it-1]) } }
+    val stories = remember { listOf(
+        StoryItem("خرگوش اور کچھی کی دوڑ", listOf("ایک جنگل میں تیز رفتار خرگوش اور ایک کچھی رہتے تھے۔ خرگوش کو اپنی رفتار پر بڑا غرور تھا اور وہ کچھی کا مذاق اڑاتا تھا۔ کچھی نے تنگ آ کر خرگوش کو دوڑ کا مقابلہ کرنے کا کہا۔ دوڑ شروع ہوئی تو خرگوش تیزی سے بھاگ کر بہت آگے نکل گیا۔", "خرگوش نے سوچا کہ کچھی بہت پیچھے ہے، کیوں نہ درخت کے نیچے تھوڑی دیر سو لوں۔ وہ سو گیا مگر کچھی لگاتار چلتا رہا اور چوٹی پر پہنچ گیا۔ خرگوش جاگا تو کچھی جیت چکا تھا!\n\nسبق: غرور کا سر نیچا ہوتا ہے، مستقل محنت سے کامیابی ملتی ہے۔")),
+        StoryItem("پیاسا کوا اور عقلمندی", listOf("سخت گرمی تھی اور ایک کوے کو پیاس لگی تھی۔ وہ پانی کی تلاش میں اڑتا رہا۔ آخر کار اسے باغ میں ایک مٹی کا گھڑا ملا۔ وہ فورا گھڑے پر بیٹھا تاکہ پانی پی سکے۔", "گھڑے میں پانی بہت تھوڑا تھا اور چونچ نیچے نہیں پہنچ پا رہی تھی۔ کوے نے عقل لڑائی اور آس پاس سے کنکر اٹھا کر گھڑے میں ڈالنے شروع کیے۔ پانی اوپر آ گیا، کوے نے پیٹ بھر کر پانی پیا اور اڑ گیا!\n\nسبق: جہاں چاہ وہاں راہ، عقل سے ہر مشکل آسان ہو جاتی ہے۔"))
+    )}
+
+    Box(Modifier.fillMaxSize()) {
+        NatureBackground()
+        when (screen) {
+            Screen.SPLASH -> SplashScreen { screen = Screen.HOME }
+            Screen.HOME -> HomeScreen { screen = it }
+            Screen.QAIDA -> GridDisplay("مکمل اردو قاعدہ (37 حروف)", qaida) { screen = Screen.HOME }
+            Screen.ABC -> GridDisplay("English ABC (A-Z)", abc) { screen = Screen.HOME }
+            Screen.GINTI -> GridDisplay("گنتی (1 تا 20)", ginti) { screen = Screen.HOME }
+            Screen.STORIES -> {
+                Column(Modifier.fillMaxSize()) {
+                    TopBar("کہانیاں", onBack = { screen = Screen.HOME })
+                    stories.forEach { s ->
+                        Card(Modifier.fillMaxWidth().padding(10.dp).clickable { story = s; screen = Screen.STORY_DETAIL }, shape = RoundedCornerShape(14.dp)) {
+                            Text(s.title + " 📖", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20), modifier = Modifier.padding(16.dp))
+                        }
+                    }
+                }
+            }
+            Screen.STORY_DETAIL -> story?.let { StoryDetailScreen(it) { screen = Screen.STORIES } }
         }
     }
 }
