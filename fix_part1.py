@@ -1,0 +1,167 @@
+import os, shutil
+
+print("Step 1: Purging broken ScreensStudio and old files...")
+for p in ["app/src/main/java/com/nanhesitare/app/ui", "app/src/main/java/com/nanhesitare/app/models"]:
+    if os.path.exists(p):
+        shutil.rmtree(p)
+
+part1_code = '''package com.nanhesitare.app
+
+import android.os.Bundle
+import android.media.AudioTrack
+import android.media.AudioManager
+import android.media.AudioFormat
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+
+enum class AppScreen { HOME, QAIDA, ABC, GINTI, STORIES, STORY_DETAIL }
+
+data class QaidaItem(val letter: String, val word: String, val phonetic: String, val color: Long)
+data class AbcItem(val letter: String, val word: String, val urduMeaning: String, val color: Long)
+data class GintiItem(val num: Int, val urduDigit: String, val urduWord: String, val engWord: String, val color: Long)
+data class StoryItem(val id: Int, val titleUrdu: String, val titleEng: String, val moral: String, val paragraphs: List<String>, val emoji: String)
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { NanheSitareMainApp() }
+    }
+}
+
+fun playWelcomeChime() {
+    Thread {
+        try {
+            val sampleRate = 44100
+            val freqs = doubleArrayOf(523.25, 659.25, 783.99, 1046.50)
+            val noteDuration = 0.15
+            val totalSamples = (sampleRate * noteDuration * freqs.size).toInt()
+            val buffer = ShortArray(totalSamples)
+            var offset = 0
+            for (freq in freqs) {
+                val samplesPerNote = (sampleRate * noteDuration).toInt()
+                for (i in 0 until samplesPerNote) {
+                    val time = i.toDouble() / sampleRate
+                    val env = Math.sin(Math.PI * i / samplesPerNote)
+                    val s = (Math.sin(2.0 * Math.PI * freq * time) * env * 0.7 * Short.MAX_VALUE).toInt()
+                    buffer[offset + i] = s.toShort()
+                }
+                offset += samplesPerNote
+            }
+            val track = AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, buffer.size * 2, AudioTrack.MODE_STATIC)
+            track.write(buffer, 0, buffer.size)
+            track.play()
+        } catch (_: Exception) {}
+    }.start()
+}
+
+@Composable
+fun NanheSitareMainApp() {
+    var showSplash by remember { mutableStateOf(true) }
+    var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
+    var selectedStory by remember { mutableStateOf<StoryItem?>(null) }
+
+    BackHandler(enabled = (currentScreen != AppScreen.HOME)) {
+        if (currentScreen == AppScreen.STORY_DETAIL) {
+            currentScreen = AppScreen.STORIES
+            selectedStory = null
+        } else {
+            currentScreen = AppScreen.HOME
+        }
+    }
+
+    if (showSplash) {
+        SplashScreen(onFinish = { showSplash = false })
+    } else {
+        NatureBackground {
+            when (currentScreen) {
+                AppScreen.HOME -> HomeScreen(onNavigate = { currentScreen = it })
+                AppScreen.QAIDA -> QaidaScreen(onBack = { currentScreen = AppScreen.HOME })
+                AppScreen.ABC -> AbcScreen(onBack = { currentScreen = AppScreen.HOME })
+                AppScreen.GINTI -> GintiScreen(onBack = { currentScreen = AppScreen.HOME })
+                AppScreen.STORIES -> StoriesScreen(onBack = { currentScreen = AppScreen.HOME }, onSelectStory = { selectedStory = it; currentScreen = AppScreen.STORY_DETAIL })
+                AppScreen.STORY_DETAIL -> selectedStory?.let { StoryDetailScreen(story = it, onBack = { currentScreen = AppScreen.STORIES }) }
+            }
+        }
+    }
+}
+
+@Composable
+fun SplashScreen(onFinish: () -> Unit) {
+    val scale = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        playWelcomeChime()
+        scale.animateTo(1.15f, tween(800, easing = FastOutSlowInEasing))
+        scale.animateTo(1.0f, tween(300))
+        delay(1200)
+        onFinish()
+    }
+    Box(
+        modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF81D4FA), Color(0xFFFFF9C4)))),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.scale(scale.value)) {
+            Text("⭐", fontSize = 75.sp)
+            Spacer(modifier = Modifier.height(14.dp))
+            Text("ننھے ستارے", fontSize = 42.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+            Text("Nanhe Sitare", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = Color(0xFFD84315))
+        }
+    }
+}
+
+@Composable
+fun NatureBackground(content: @Composable BoxScope.() -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(Brush.verticalGradient(listOf(Color(0xFF81D4FA), Color(0xFFE1F5FE))))
+            drawCircle(Color(0xFFFFD54F), radius = size.width * 0.12f, center = Offset(size.width * 0.85f, size.height * 0.12f))
+            drawCircle(Color.White.copy(alpha = 0.8f), radius = 50f, center = Offset(size.width * 0.25f, size.height * 0.12f))
+            val hill = Path().apply {
+                moveTo(0f, size.height * 0.78f)
+                cubicTo(size.width * 0.4f, size.height * 0.72f, size.width * 0.8f, size.height * 0.82f, size.width, size.height * 0.76f)
+                lineTo(size.width, size.height); lineTo(0f, size.height); close()
+            }
+            drawPath(hill, color = Color(0xFF4CAF50))
+            val river = Path().apply {
+                moveTo(size.width * 0.35f, size.height * 0.76f)
+                cubicTo(size.width * 0.45f, size.height * 0.83f, size.width * 0.25f, size.height * 0.91f, size.width * 0.5f, size.height)
+                lineTo(size.width * 0.65f, size.height)
+                cubicTo(size.width * 0.42f, size.height * 0.91f, size.width * 0.58f, size.height * 0.83f, size.width * 0.45f, size.height * 0.76f)
+                close()
+            }
+            drawPath(river, color = Color(0xFF29B6F6))
+            drawRect(Color(0xFF795548), topLeft = Offset(size.width * 0.08f, size.height * 0.68f), size = androidx.compose.ui.geometry.Size(16f, 65f))
+            drawCircle(Color(0xFF2E7D32), radius = 40f, center = Offset(size.width * 0.08f + 8f, size.height * 0.66f))
+            drawCircle(Color(0xFFFF5252), radius = 6f, center = Offset(size.width * 0.2f, size.height * 0.85f))
+            drawCircle(Color(0xFFFFEB3B), radius = 6f, center = Offset(size.width * 0.8f, size.height * 0.86f))
+        }
+        content()
+    }
+}
+'''
+with open("temp_part1.txt", "w", encoding="utf-8") as f:
+    f.write(part1_code)
+
+print("✅ Part 1 complete! Now run Part 2.")
